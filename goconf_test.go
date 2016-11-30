@@ -65,6 +65,24 @@ func TestGetBool(t *testing.T) {
 	}
 }
 
+func TestGetInt(t *testing.T) {
+	glog.Info("***Testing get boolean from JSON.***")
+
+	parser, err := NewJSONParserFromBytes(data)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	i, err := parser.GetInt("object/buffer_size", -1)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	if i != 10 {
+		glog.Fatal("Assertion failure, expected: 10, result: %s.", i)
+	}
+}
+
 func TestInvalidKey(t *testing.T) {
 	glog.Info("***Testing get invalid key from JSON.***")
 

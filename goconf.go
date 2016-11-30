@@ -53,12 +53,10 @@ func NewJSONParserFromBytes(file []byte) (*JSONParser, error) {
 	return &JSONParser{data}, nil
 }
 
+// getData gets value by served key, if any error, return default value with
+// the error.
 func (parser *JSONParser) getData(key string, defaultVal interface{}) (
 	interface{}, error) {
-	// Handle nil default value.
-	if defaultVal == nil {
-		defaultVal = ""
-	}
 
 	// Empty key.
 	if len(key) == 0 {
@@ -76,19 +74,23 @@ func (parser *JSONParser) getData(key string, defaultVal interface{}) (
 		if m, ok := value.(map[string]interface{}); ok {
 			val, exists := m[s]
 			if !exists {
-				return nil, NoSuchKeyError{strings.Join(keyPath[:(i+1)], "/")}
+				return defaultVal, NoSuchKeyError{strings.Join(keyPath[:(i+1)], "/")}
 			}
 			value = val
 		} else {
-			return nil, InvalidValueTypeError{strings.Join(keyPath[:(i+1)], "/"), value}
+			return defaultVal, NoSuchKeyError{strings.Join(keyPath[:(i+1)], "/")}
 		}
 	}
 
 	return value, nil
 }
 
-// GetString gets string value by key, the value will be converted from
+// GetString gets string value by served key, the value will be converted from
 // interface{} to string type if possible.
+//
+// If the key is not found, return defaultVal passed in with NoSuchKeyError. If
+// the value type is not string, return defaultVal passed in with
+// InvalidValueTypeError.
 func (parser *JSONParser) GetString(key string, defaultVal string) (string, error) {
 	// Get value.
 	value, err := parser.getData(key, defaultVal)
@@ -103,8 +105,12 @@ func (parser *JSONParser) GetString(key string, defaultVal string) (string, erro
 	return "", InvalidValueTypeError{key, value}
 }
 
-// GetBool gets boolean value by key, the value will be converted to bool type
-// if possible.
+// GetBool gets boolean value by served key, the value will be converted from
+// interface{} to bool type if possible.
+//
+// If the key is not found, return defaultVal passed in with NoSuchKeyError. If
+// the value type is not bool, return defaultVal passed in with
+// InvalidValueTypeError.
 func (parser *JSONParser) GetBool(key string, defaultVal bool) (bool, error) {
 	// Get value.
 	value, err := parser.getData(key, defaultVal)
@@ -112,9 +118,50 @@ func (parser *JSONParser) GetBool(key string, defaultVal bool) (bool, error) {
 		return defaultVal, err
 	}
 
-	// Convert to string.
+	// Convert to bool.
 	if b, ok := value.(bool); ok {
 		return b, nil
 	}
 	return false, InvalidValueTypeError{key, value}
+}
+
+// GetFloat gets float64 value by served key, the value will be converted from
+// interface{} to float64 type if possible.
+//
+// If the key is not found, return defaultVal passed in with NoSuchKeyError. If
+// the value type is not float64, return defaultVal passed in with
+// InvalidValueTypeError.
+func (parser *JSONParser) GetFloat64(key string, defaultVal float64) (float64, error) {
+	// Get value.
+	value, err := parser.getData(key, defaultVal)
+	if err != nil {
+		return defaultVal, err
+	}
+
+	// Convert to float64.
+	if f, ok := value.(float64); ok {
+		return f, nil
+	}
+	return defaultVal, InvalidValueTypeError{key, value}
+}
+
+// GetInt gets int value by served key, the value will be converted from
+// interface{} to int type if possible.
+//
+// If the key is not found, return defaultVal passed in with NoSuchKeyError. If
+// the value type is not int, return defaultVal passed in with
+// InvalidValueTypeError.
+func (parser *JSONParser) GetInt(key string, defaultVal int) (int, error) {
+	// Get value. json unmarshall parse numerical data to float64 by default.
+	value, err := parser.GetFloat64(key, float64(defaultVal))
+	if err != nil {
+		return defaultVal, err
+	}
+
+	// Convert to int.
+	i := int(value)
+	if float64(i) == value {
+		return i, nil
+	}
+	return defaultVal, InvalidValueTypeError{key, value}
 }
